@@ -1,9 +1,10 @@
 const apiKey = "3a02bf65c6977e58e548b91a8982ae98";
-const apiUrl = "https://api.openweathermap.org/data/2.5/weather?units=metric&q=";
+const apiUrl = "https://api.openweathermap.org/data/2.5/weather?q=";
 
 const searchBox = document.querySelector(".search input");
 const searchBtn = document.querySelector(".search button");
 const weatherIcon = document.querySelector(".weather-icon");
+const unitSelect = document.getElementById("unitSelect");
 
 const icons = {
   Clouds: "icons/clouds.png",
@@ -14,13 +15,13 @@ const icons = {
   Mist: "icons/mist.png"
 };
 
-async function checkWeather(city) {
+async function checkWeather(city, unit = "metric") {
   try {
-    const response = await fetch(`${apiUrl}${city}&appid=${apiKey}`);
+    const response = await fetch(`${apiUrl}${city}&units=${unit}&appid=${apiKey}`);
     if (!response.ok) throw new Error("City not found");
 
     const data = await response.json();
-    displayWeather(data);
+    displayWeather(data, unit);
 
   } catch (error) {
     document.querySelector(".error").style.display = "block";
@@ -28,14 +29,24 @@ async function checkWeather(city) {
   }
 }
 
-// ✅ new function to display data (used by both search & geolocation)
-function displayWeather(data) {
+function displayWeather(data, unit) {
   document.querySelector(".city").innerHTML = data.name;
-  document.querySelector(".temperature").innerHTML = Math.round(data.main.temp) + "°C";
-  document.querySelector(".humidity").innerHTML = data.main.humidity + "%";
-  document.querySelector(".wind").innerHTML = data.wind.speed + "km/h";
+  const tempUnit = unit === "metric" ? "°C" : "°F";
 
-  weatherIcon.src = icons[data.weather[0].main] || "icons/clear.png";
+  let windSpeed, windUnit;
+  if (unit === "metric") {
+    windSpeed = (data.wind.speed * 3.6).toFixed(1);
+    windUnit = "km/h";
+  } else {
+    windSpeed = data.wind.speed.toFixed(1);
+    windUnit = "mph";
+  }
+
+  document.querySelector(".temperature").innerHTML = Math.round(data.main.temp) + tempUnit;
+  document.querySelector(".humidity").innerHTML = data.main.humidity + "%";
+  document.querySelector(".wind").innerHTML = windSpeed + " " + windUnit;
+
+  weatherIcon.src = icons[data.weather[0].main];
 
   document.querySelector(".weather").style.display = "block";
   document.querySelector(".error").style.display = "none";
@@ -44,12 +55,18 @@ function displayWeather(data) {
 }
 
 searchBtn.addEventListener("click", () => {
-  checkWeather(searchBox.value);
+  checkWeather(searchBox.value, unitSelect.value);
 });
 
 searchBox.addEventListener("keypress", (e) => {
   if (e.key === "Enter") {
-    checkWeather(searchBox.value);
+    checkWeather(searchBox.value, unitSelect.value);
+  }
+});
+
+unitSelect.addEventListener("change", () => {
+  if (document.querySelector(".city").innerHTML !== "") {
+    checkWeather(document.querySelector(".city").innerHTML, unitSelect.value);
   }
 });
 
@@ -79,23 +96,6 @@ function updateBackground(condition) {
   }
 }
 
-// ✅ Geolocation support on page load
-window.onload = () => {
-  if (navigator.geolocation) {
-    navigator.geolocation.getCurrentPosition(async (position) => {
-      const { latitude, longitude } = position.coords;
-      try {
-        const response = await fetch(
-          `https://api.openweathermap.org/data/2.5/weather?lat=${latitude}&lon=${longitude}&units=metric&appid=${apiKey}`
-        );
-        if (!response.ok) throw new Error("Location fetch failed");
-
-        const data = await response.json();
-        displayWeather(data);
-
-      } catch (error) {
-        console.error("Geolocation fetch failed:", error);
-      }
-    });
-  }
-};
+window.onload = () =>{
+  checkWeather("Karachi")
+}
